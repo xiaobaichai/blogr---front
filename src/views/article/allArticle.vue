@@ -2,41 +2,37 @@
   <div class="outer">
     <div class="search">
       <el-input v-model="keyword" class="input" placeholder="请输入搜索内容" />
-      <el-button class="button" type="primary">查询</el-button>
+      <el-button class="button" type="primary" @click="search">查询</el-button>
     </div>
     <el-table
-      class="table"
-      :data="tableData"
+      class="tableBox"
+      :data="articleData"
+      max-height="700px"
       border
     >
       <el-table-column
-        prop="date"
-        label="日期"
-        width="150"
+        prop="id"
+        label="文章ID"
+        width="100"
       />
       <el-table-column
-        prop="name"
-        label="姓名"
-        width="120"
+        prop="title"
+        label="文章标题"
+        width="180"
       />
       <el-table-column
-        prop="province"
-        label="省份"
-        width="120"
-      />
+        label="文章内容"
+        width="500"
+        :show-overflow-tooltip="true"
+      >
+        <template slot-scope="scope">
+          <!-- 因为elmentui表格超高现在无法处理，只能暂时先用pre_content来防止表格超高 -->
+          <div v-html="scope.row.pre_content" />
+        </template>
+      </el-table-column>
       <el-table-column
-        prop="city"
-        label="市区"
-        width="120"
-      />
-      <el-table-column
-        prop="address"
-        label="地址"
-        width="300"
-      />
-      <el-table-column
-        prop="zip"
-        label="邮编"
+        prop="tag"
+        label="文章分类"
         width="120"
       />
       <el-table-column
@@ -44,7 +40,7 @@
       >
         <template slot-scope="scope">
           <el-button type="text" size="small" @click="deleteItem(scope.row)">删除</el-button>
-          <el-button type="text" size="small" @click="editItem(scope.row)">编辑</el-button>
+          <el-button type="text" size="small" @click="readyEdit(scope.row)">编辑</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -53,17 +49,20 @@
       class="pagination"
       background
       layout="prev, pager, next"
-      :total="1000"
+      :page-size="8"
+      :total="articleCount"
       :hide-on-single-page="true"
+      @current-change="handleCurrentChange"
     />
     <!-- 弹窗 -->
     <el-dialog
+      v-if="dialogVisible"
       title="编辑"
-      :visible="dialogVisible"
+      :visible.sync="dialogVisible"
       width="70%"
       :before-close="handleClose"
     >
-      <edit-dialog />
+      <edit-dialog :row-data="rowData" @closeDialog="closeDialog" />
     </el-dialog>
   </div>
 </template>
@@ -71,46 +70,92 @@
 <script>
 import EditDialog from './EditDialog.vue'
 
+import { getArticle, getArticleCount, deleteArticle, searchArticle } from '@/api/article.js'
+
 export default {
   components: {
     EditDialog
   },
   data() {
     return {
-      tableData: [{
-        date: '2016-05-02',
-        name: '王小虎',
-        address: '上海市普陀区金沙江路 1518 弄'
-      }, {
-        date: '2016-05-04',
-        name: '王小虎',
-        address: '上海市普陀区金沙江路 1517 弄'
-      }, {
-        date: '2016-05-01',
-        name: '王小虎',
-        address: '上海市普陀区金沙江路 1519 弄'
-      }, {
-        date: '2016-05-03',
-        name: '王小虎',
-        address: '上海市普陀区金沙江路 1516 弄'
-      }],
+      articleData: [],
+      articleCount: 0,
       keyword: '',
       dialogVisible: false,
-      rowDialog: {}
+      rowData: {},
+      editId: 0
     }
   },
+  mounted() {
+    this.reqData()
+  },
   methods: {
+    // 删除文章
     deleteItem: function(row) {
-      console.log('xixi')
-      console.log(row)
+      this.$confirm('是否确认删除该留言?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        deleteArticle(row.id)
+          .then(response => {
+            if (response.data.code !== 0) return
+            window.location.reload()
+            this.$message({
+              type: 'success',
+              message: '删除成功'
+            })
+          })
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消'
+        })
+      })
     },
-    editItem: function(row) {
-      console.log(row)
-      this.dialogVisible = true
-      this.rowDialog = row
+    search() {
+      searchArticle(this.keyword)
+        .then(response => {
+          if (response.data.code !== 0) {
+            this.$message('服务端错误')
+            return
+          }
+          this.articleData = response.data.data
+          this.articleCount = response.data.data.length
+        })
     },
-    handleClose: function() {
+    closeDialog() {
       this.dialogVisible = false
+      window.location.reload()
+    },
+    readyEdit: function(row) {
+      this.dialogVisible = true
+      this.rowData = row
+    },
+    handleClose(done) {
+      this.$confirm('确认关闭？')
+        .then(_ => {
+          done()
+        })
+        .catch(_ => {})
+    },
+    handleCurrentChange: function(page) {
+      getArticle(page, 8)
+        .then(response => {
+          if (response.data.code !== 0) return
+          this.articleData = response.data.data
+        })
+    },
+    reqData: function() {
+      getArticle(1, 8)
+        .then(response => {
+          if (response.data.code !== 0) return
+          this.articleData = response.data.data
+        })
+      getArticleCount()
+        .then(response => {
+          this.articleCount = response.data.data[0].articleCount
+        })
     }
   }
 }
@@ -129,7 +174,7 @@ export default {
         width: 92%;
       }
     }
-    .table {
+    .tableBox {
       width: 90%;
       margin: 20px auto;
     }

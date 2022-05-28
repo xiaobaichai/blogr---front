@@ -35,25 +35,13 @@
       :page-size="8"
       :total="userCount"
       :hide-on-single-page="true"
+      @current-change="handleCurrentChange"
     />
-    <!-- 弹窗 -->
-    <el-dialog
-      title="提示"
-      :visible="dialogVisible"
-      width="30%"
-    >
-      <span>{{ rowDialog.date }}</span>
-      <el-input v-model="rowDialog.date" class="input" placeholder="请输入搜索内容" />
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">取 消</el-button>
-        <el-button @click="dialogVisible = false">确 定</el-button>
-      </span>
-    </el-dialog>
   </div>
 </template>
 
 <script>
-import { getUserData } from '@/api/userManagement.js'
+import { getUserCount, getUserData, deleteUser } from '@/api/userManagement.js'
 
 export default {
   data() {
@@ -69,20 +57,45 @@ export default {
     this.reqData()
   },
   methods: {
+    // 删除用户
     deleteItem: function(row) {
-      console.log('xixi')
-      console.log(row)
+      this.$confirm('是否确认删除该用户?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        deleteUser(row.id)
+          .then(response => {
+            if (response.data.code !== 0) return
+            window.location.reload()
+            this.$message({
+              type: 'success',
+              message: '删除成功'
+            })
+          })
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消'
+        })
+      })
     },
-    editItem: function(row) {
-      console.log(row)
-      this.dialogVisible = true
-      this.rowDialog = row
+    handleCurrentChange: function(page) {
+      getUserData(page, 8)
+        .then(response => {
+          if (response.data.code !== 0) return
+          this.userData = response.data.data
+        })
     },
     reqData: function() {
-      getUserData()
+      getUserCount()
+        .then(response => {
+          if (response.data.code !== 0) return
+          this.userCount = response.data.data[0].count
+        })
+      getUserData(1, 8)
         .then(response => {
           this.userData = response.data.data
-          this.userCount = response.data.data.length
         })
     }
   }

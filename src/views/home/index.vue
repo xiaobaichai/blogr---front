@@ -29,7 +29,7 @@ export default {
         })
       getMessageCount()
         .then(response => {
-          this.messageCount = response.data.data[0].messageCount
+          this.messageCount = response.data.data[0].count
         })
     }
   }

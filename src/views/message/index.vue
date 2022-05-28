@@ -10,7 +10,7 @@
       border
     >
       <el-table-column
-        prop="userId"
+        prop="id"
         label="ID"
         width="80"
       />
@@ -34,7 +34,7 @@
       >
         <template slot-scope="scope">
           <el-button type="text" size="small" @click="deleteItem(scope.row)">删除</el-button>
-          <el-button type="text" size="small" @click="editItem(scope.row)">回复</el-button>
+          <el-button type="text" size="small" @click="replyReady(scope.row)">回复</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -46,25 +46,26 @@
       :total="messageCount"
       :page-size="8"
       :hide-on-single-page="true"
+      @current-change="handleCurrentChange"
     />
     <!-- 弹窗 -->
     <el-dialog
-      title="提示"
-      :visible="dialogVisible"
-      width="30%"
+      title="回复:"
+      :visible.sync="dialogVisible"
+      width="60%"
+      :before-close="handleClose"
     >
-      <span>{{ rowDialog.date }}</span>
-      <el-input v-model="rowDialog.date" class="input" placeholder="请输入搜索内容" />
+      <el-input v-model="replyContent" type="textarea" />
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取 消</el-button>
-        <el-button @click="dialogVisible = false">确 定</el-button>
+        <el-button type="primary" @click="replyMessage">确 定</el-button>
       </span>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { getMessage } from '@/api/message.js'
+import { getMessageCount, getMessage, deleteMessage, reply } from '@/api/message.js'
 
 export default {
   data() {
@@ -73,27 +74,78 @@ export default {
       messageCount: 0,
       keyword: '',
       dialogVisible: false,
-      rowDialog: {}
+      rowDialog: {},
+      replyContent: '',
+      replyId: 0
     }
   },
   mounted() {
     this.reqData()
   },
   methods: {
+    // 删除留言
     deleteItem: function(row) {
-      console.log('xixi')
-      console.log(row)
+      this.$confirm('是否确认删除该留言?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        deleteMessage(row.id)
+          .then(response => {
+            if (response.data.code !== 0) return
+            window.location.reload()
+            this.$message({
+              type: 'success',
+              message: '删除成功'
+            })
+          })
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消'
+        })
+      })
     },
-    editItem: function(row) {
-      console.log(row)
+    // 弹窗留言回复框
+    replyReady: function(row) {
       this.dialogVisible = true
-      this.rowDialog = row
+      this.replyId = row.id
+    },
+    // 回复留言
+    replyMessage: function() {
+      reply(this.replyId, this.replyContent)
+        .then(response => {
+          if (response.data.code !== 0) {
+            this.dialogVisible = false
+            this.$message(response.data.message)
+          }
+          this.dialogVisible = false
+          this.$message('回复成功')
+          window.location.reload()
+        })
+    },
+    handleCurrentChange: function(page) {
+      getMessage(page, 8)
+        .then(response => {
+          if (response.data.code !== 0) return
+          this.messageData = response.data.data
+        })
+    },
+    handleClose(done) {
+      this.$confirm('确认关闭？')
+        .then(_ => {
+          done()
+        })
+        .catch(_ => {})
     },
     reqData: function() {
-      getMessage()
+      getMessageCount()
+        .then(response => {
+          this.messageCount = response.data.data[0].count
+        })
+      getMessage(1, 8)
         .then(response => {
           this.messageData = response.data.data
-          this.messageCount = response.data.data.length
         })
     }
   }

@@ -2,12 +2,12 @@
   <div class="outer">
     <div class="title">
       <p>标题</p>
-      <el-input v-model="input" placeholder="请输入内容" />
+      <el-input v-model="goodsForm.title" placeholder="请输入内容" />
     </div>
     <div class="category">
       <p>分类</p>
       <div>
-        <el-select v-model="value" placeholder="请选择">
+        <el-select v-model="goodsForm.tag" placeholder="请选择">
           <el-option
             v-for="item in options"
             :key="item.value"
@@ -20,44 +20,108 @@
     <div class="article">
       <p>内容</p>
       <div class="content">
-        <w-editor />
+        <div style="border: 1px solid #ccc;">
+          <Toolbar
+            style="border-bottom: 1px solid #ccc"
+            :editor="editor"
+            :default-config="toolbarConfig"
+            :mode="mode"
+          />
+          <Editor
+            v-model="goodsForm.content"
+            style="height: 500px; overflow-y: hidden;"
+            :default-config="editorConfig"
+            :mode="mode"
+            @onCreated="onCreated"
+          />
+        </div>
       </div>
     </div>
-    <el-button type="primary">提交</el-button>
+    <el-button type="primary" @click="edit">提交</el-button>
   </div>
 </template>
 
 <script>
-import WEditor from '@/components/WEditor.vue'
+import Vue from 'vue'
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 
-export default {
-  components: {
-    WEditor
+import { editArticle } from '@/api/article'
+
+export default Vue.extend({
+  components: { Editor, Toolbar },
+  props: {
+    rowData: {
+      type: Object,
+      default: function() {
+        return {}
+      }
+    }
   },
   data() {
     return {
+      editor: null,
+      toolbarConfig: { },
+      editorConfig: {
+        MENU_CONF: {
+          placeholder: '请输入内容。。。',
+          uploadImage: {
+            fieldName: 'file',
+            server: 'http://localhost:3001/api/updateEditorImg'
+          }
+        }
+      },
+      mode: 'default', // or 'simple',
+      goodsForm: {
+        id: '',
+        title: '',
+        tag: '',
+        content: ''
+      },
       options: [{
-        value: '选项1',
-        label: '黄金糕'
+        value: 'css/html',
+        label: 'css/html'
       }, {
-        value: '选项2',
-        label: '双皮奶'
+        value: 'js',
+        label: 'js'
       }, {
-        value: '选项3',
-        label: '蚵仔煎'
+        value: 'vue',
+        label: 'vue'
       }, {
-        value: '选项4',
-        label: '龙须面'
-      }, {
-        value: '选项5',
-        label: '北京烤鸭'
-      }],
-      input: '',
-      value: ''
+        value: '其他',
+        label: '其他'
+      }]
+    }
+  },
+  mounted() {
+
+  },
+  beforeDestroy() {
+    const editor = this.editor
+    if (editor == null) return
+    editor.destroy() // 组件销毁时，及时销毁编辑器
+  },
+  methods: {
+    edit() {
+      console.log(this.goodsForm)
+      editArticle(this.goodsForm)
+        .then(response => {
+          if (response.data.code !== 0) {
+            this.$message('服务端错误')
+            return
+          }
+          this.$message('修改成功')
+          this.$emit('closeDialog')
+        })
+    },
+    onCreated(editor) {
+      this.goodsForm = this.rowData
+      this.editor = Object.seal(editor) // 一定要用 Object.seal() ，否则会报错
     }
   }
-}
+})
 </script>
+
+<style src="@wangeditor/editor/dist/css/style.css"></style>
 
 <style lang="scss" scoped>
 .outer {

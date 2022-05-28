@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div style="border: 1px solid #ccc;">
     <Toolbar
       style="border-bottom: 1px solid #ccc"
@@ -32,7 +32,8 @@ export default Vue.extend({
     }
   },
   mounted() {
-
+    this.html = 'hh'
+    console.log('xixi')
   },
   beforeDestroy() {
     const editor = this.editor
@@ -42,9 +43,13 @@ export default Vue.extend({
   methods: {
     onCreated(editor) {
       this.editor = Object.seal(editor) // 一定要用 Object.seal() ，否则会报错
+    },
+    sendMsg() {
+      this.$emit('func', this.html)
+      console.log(this.html)
     }
   }
 })
 </script>
 
-<style src="@wangeditor/editor/dist/css/style.css"></style>
+<style src="@wangeditor/editor/dist/css/style.css"></style> -->
